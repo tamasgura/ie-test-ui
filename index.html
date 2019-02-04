@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+  <style>
+    p {
+      margin: 0;
+    }
+
+    p, label, span, button {
+      font-family: Helvetica, sans-serif;
+      margin: 2px;
+    }
+
+    h1 {
+      font-family: Helvetica, sans-serif;
+      font-size: 17px;
+      margin-top: 0;
+      margin-left: 4px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      max-width: 600px;
+      border-bottom: 1px solid #c1c1c1;
+    }
+
+    h2 {
+      font-family: Helvetica, sans-serif;
+      font-size: 15px;
+      margin-top: 0;
+      margin-left: 4px;
+      margin-bottom: 8px;
+    }
+
+    img:hover {
+      cursor: pointer;
+    }
+
+    .wrapper {
+      padding: 0 20px 12px;
+    }
+
+    .controls {
+      display: flex;
+      margin-bottom: 28px;
+    }
+
+    .controlContainer {
+      flex: 1;
+      padding-right: 10px;
+    }
+
+    .controlContainer:not(:first-child) {
+      padding-left: 10px;
+    }
+
+    .controlContainer:not(:last-child) {
+      border-right: 1px solid silver;
+    }
+
+    .main {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .effectRow {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-left: 4px;
+      margin-right: 4px
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div>
+    <h1>Image editor test UI</h1>
+    <div class="controls">
+
+      <div class="effectsContainer, controlContainer">
+        <h2>Effects</h2>
+        <div class="effectRow">
+          <label for="brightness">brightness</label>
+          <input type="range" id="brightness" min="0" max="2" step="0.1">
+        </div>
+        <div class="effectRow">
+          <label for="contrast">contrast</label>
+          <input type="range" id="contrast" min="0" max="2" step="0.1">
+        </div>
+      </div>
+
+      <div class="controlContainer">
+        <h2>Flip</h2>
+        <button type="button" id="flipH">flip horizontally</button>
+        <button type="button" id="flipV">flip vertically</button>
+      </div>
+
+      <div class="controlContainer">
+        <h2>Rotate</h2>
+        <button type="button" id="rotateL">rotate left</button>
+        <button type="button" id="rotateR">rotate right</button>
+      </div>
+
+      <div class="controlContainer">
+        <h2>Crop</h2>
+        <button type="button" id="initCrop">crop</button>
+        <button type="button" id="cancelCrop">cancel</button>
+        <button type="button" id="crop">finish</button>
+      </div>
+
+      <div class="controlContainer">
+        <h2>History</h2>
+        <button type="button" id="undo">undo</button>
+        <button type="button" id="restore">restore initial image</button>
+        <button type="button" id="logOperations">log performed operations</button>
+      </div>
+
+      <div class="controlContainer">
+        <h2>Result</h2>
+        <!--<label>resize</label>-->
+        <!--<input type="number" id="resizeW" step="100" min="200" max="3000" onchange="">-->
+        <!--&times;-->
+        <!--<input type="number" id="resizeH" step="100" min="200" max="3000" onchange="">-->
+        <button type="button" id="save">save</button>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="main">
+    <div>
+      <canvas width="400" height="300" class="editorCanvas" style="background-color: #eee"></canvas>
+    </div>
+
+    <div class="imagePickerContainer">
+      <p>Pick an image to load it:</p>
+      <img src="./static/raster.png" alt="r" height="120" id="loadRaster">
+      <img src="./static/cat.jpg" alt="r" height="120" id="loadCat">
+      <img src="https://storage.googleapis.com/saasuat-shopiago-imagestore/20190110%2Fff375834-42f7-4743-9ecd-ed903b3b091dBasketball.png.jpg?timestamp=1547126076647"
+           alt="" height="120" id="loadShopiagoImg">
+    </div>
+  </div>
+
+</div>
+<script src="./imageEditor.min.js"></script>
+<script>
+  let image;
+  let canvas = document.getElementsByClassName('editorCanvas')[0];
+  const controls = {
+    // resizeH: null,
+    // resizeW: null,
+    brightness: null,
+    contrast: null,
+    flipH: null,
+    flipV: null,
+    rotateL: null,
+    rotateR: null,
+    initCrop: null,
+    cancelCrop: null,
+    crop: null,
+  };
+
+  const externalImgSrc = 'https://storage.googleapis.com/saasuat-shopiago-imagestore/20190110%2Fff375834-42f7-4743-9ecd-ed903b3b091dBasketball.png.jpg?timestamp=1547126076647';
+  const catImgSrc = './static/cat.jpg';
+  const rasterImgSrc = './static/raster.png';
+
+  let imageEditor;
+
+  window.addEventListener('load', function () {
+    // controls.resizeH = document.getElementById('resizeH');
+    // controls.resizeW = document.getElementById('resizeW');
+    controls.brightness = document.getElementById('brightness');
+    controls.contrast = document.getElementById('contrast');
+    controls.flipH = document.getElementById('flipH');
+    controls.flipV = document.getElementById('flipV');
+    controls.rotateL = document.getElementById('rotateL');
+    controls.rotateR = document.getElementById('rotateR');
+    controls.initCrop = document.getElementById('initCrop');
+    controls.cancelCrop = document.getElementById('cancelCrop');
+    controls.crop = document.getElementById('crop');
+
+    imageEditor = ImageEditor.default;
+
+    addEventListeners();
+
+    init(externalImgSrc);
+  });
+
+  function init(source) {
+    imageEditor.init(source).then(function (result) {
+      resetUI(result.image.el)
+    });
+  }
+
+  function resetUI(img) {
+    // controls.resizeW.value = image.width;
+    // controls.resizeH.value = image.height
+    image = img;
+    controls.brightness.value = 1;
+    controls.contrast.value = 1;
+    controls.flipH.checked = false;
+    controls.flipV.checked = false;
+  }
+
+  function saveImage() {
+    // if (controls.resizeW.value && controls.resizeH.value) {
+    //   imageEditor.resize({width: +controls.resizeW.value, height: +controls.resizeH.value});
+    // }
+    canvas.addEventListener('onComposeFinished', downloadHandler)
+    imageEditor.compose('image/jpeg')
+  }
+
+  function downloadHandler(event) {
+    const image = event.detail.image;
+    const el = document.createElement('a');
+    el.download = 'myImage.jpg';
+    el.href = image;
+    el.click()
+  }
+
+  function addEventListeners() {
+    document.getElementById('loadRaster').addEventListener('click', function () {
+      init(rasterImgSrc)
+    });
+    document.getElementById('loadCat').addEventListener('click', function () {
+      init(catImgSrc)
+    });
+    document.getElementById('loadShopiagoImg').addEventListener('click', function () {
+      init(externalImgSrc)
+    });
+
+    controls.brightness.addEventListener('input', function (e) {
+      imageEditor.setEffect('brightness', e.target.value)
+    });
+    controls.contrast.addEventListener('input', function (e) {
+      imageEditor.setEffect('contrast', e.target.value)
+    });
+
+    controls.flipH.addEventListener('click', function () {
+      imageEditor.flip({flipH: true, flipV: false})
+    });
+    controls.flipV.addEventListener('click', function () {
+      imageEditor.flip({flipH: false, flipV: true})
+    });
+
+    controls.rotateL.addEventListener('click', function () {
+      imageEditor.rotate(-90)
+    });
+    controls.rotateR.addEventListener('click', function () {
+      imageEditor.rotate(90)
+    });
+
+    controls.initCrop.addEventListener('click', function () {
+      imageEditor.initCropSelect()
+    });
+    controls.cancelCrop.addEventListener('click', function () {
+      imageEditor.cancelCrop()
+    });
+    controls.crop.addEventListener('click', function () {
+      imageEditor.crop()
+    });
+
+    document.getElementById('save').addEventListener('click', saveImage);
+    document.getElementById('restore').addEventListener('click', function () {
+      imageEditor.reset().then(function (result) {
+        resetUI(result.image.el)
+      });
+    });
+    document.getElementById('undo').addEventListener('click', function () {
+      imageEditor.revert()
+    });
+    document.getElementById('logOperations').addEventListener('click', function () {
+      console.log(imageEditor.getOperations())
+    })
+
+    // canvas.addEventListener('onCropFinished', setResizeControls);
+    // controls.resizeW.addEventListener('input', changeResizeHeightView);
+    // controls.resizeH.addEventListener('input', changeResizeWidthView);
+
+  }
+
+  // function changeResizeHeightView() {
+  //   const w = controls.resizeW.value;
+  //   if (w >= 100 && w <= 4000) {
+  //     const aspectRatio = image.width / image.height;
+  //     controls.resizeH.value = Math.round(w / aspectRatio)
+  //   }
+  // }
+  //
+  // function changeResizeWidthView() {
+  //   const h = controls.resizeH.value;
+  //   if (h >= 100 && h <= 4000) {
+  //     const aspectRatio = image.width / image.height;
+  //     controls.resizeW.value = Math.round(h * aspectRatio)
+  //   }
+  // }
+  //
+  // function setResizeControls(event) {
+  //   let w, h;
+  //
+  //   canvas.removeEventListener('onCropFinished', setResizeControls)
+  //   w = event.detail.selectBox.percentages.width;
+  //   h = event.detail.selectBox.percentages.height;
+  //
+  //   controls.resizeW.value = Math.round(image.width * (w / 100));
+  //   controls.resizeH.value = Math.round(image.height * (h / 100));
+  //   image = event.detail.image
+  // }
+</script>
+</body>
+</html>
